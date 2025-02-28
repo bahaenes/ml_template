@@ -1,0 +1,82 @@
+# Proje Yapılandırması
+
+# Veri yolu
+data_path: "data/dataset.csv"  # Veri setinin yolu
+
+# Problem türü: 'classification' veya 'regression'
+problem_type: "regression"
+
+# Hedef değişken
+target_column: "target"  # Hedef değişken adını veri setinizdeki sütun adıyla değiştirin
+
+# Veri bölme parametreleri
+test_size: 0.3
+random_state: 42
+
+# Model değerlendirme metriği
+scoring: "r2"  # Regresyon için R-kare metriği
+
+# Modeller ve hiperparametreler
+models:
+  xgboost:
+    class: "xgboost.XGBRegressor"
+    fixed_params:
+      objective: "reg:squarederror"
+      tree_method: "gpu_hist"  # GPU kullanımı için
+      predictor: "gpu_predictor"  # GPU kullanımı için
+      n_jobs: -1
+    param_grid:
+      n_estimators: [100, 200, 300]
+      max_depth: [3, 5, 7]
+      learning_rate: [0.01, 0.1, 0.3]
+      subsample: [0.8, 1.0]
+      colsample_bytree: [0.8, 1.0]
+
+  lightgbm:
+    class: "lightgbm.LGBMRegressor"
+    fixed_params:
+      objective: "regression"
+      device_type: "gpu"  # 'device' yerine 'device_type' kullanılmalı
+      gpu_platform_id: 0
+      gpu_device_id: 0
+      n_jobs: -1
+      verbose: -1
+    param_grid:
+      n_estimators: [100, 200, 300]
+      max_depth: [3, 5, 7]
+      learning_rate: [0.01, 0.1, 0.3]
+      num_leaves: [31, 63, 127]
+      feature_fraction: [0.8, 0.9, 1.0]
+
+  random_forest:
+    class: "sklearn.ensemble.RandomForestRegressor"
+    fixed_params:
+      n_jobs: -1
+    param_grid:
+      n_estimators: [100, 200]
+      max_depth: [10, 20, null]
+      min_samples_split: [2, 5]
+      min_samples_leaf: [1, 2]
+      max_features: ["sqrt", "log2"]
+
+  neural_net:
+    class: "sklearn.neural_network.MLPRegressor"
+    fixed_params:
+      max_iter: 1000
+      early_stopping: true
+    param_grid:
+      hidden_layer_sizes: [(100,), (100, 50), (100, 50, 25)]
+      activation: ["relu", "tanh"]
+      alpha: [0.0001, 0.001, 0.01]
+      learning_rate_init: [0.001, 0.01]
+
+  stacking:
+    class: "sklearn.ensemble.StackingRegressor"
+    fixed_params:
+      estimators:
+        - ["xgb", "xgboost.XGBRegressor", {"objective": "reg:squarederror", "tree_method": "gpu_hist", "predictor": "gpu_predictor"}]
+        - ["lgb", "lightgbm.LGBMRegressor", {"objective": "regression", "device_type": "gpu"}]
+        - ["rf", "sklearn.ensemble.RandomForestRegressor", {}]
+      final_estimator: "sklearn.linear_model.Ridge"
+      cv: 5
+      n_jobs: -1 
